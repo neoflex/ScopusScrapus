@@ -12,6 +12,8 @@ class ScopusSearchQuery:
                       'view': 'COMPLETE',
                       'httpAccept': 'application/json'}
     _baseUrl = "http://api.elsevier.com/content/search/scopus?"
+    _support_pagination = True
+    _root_key = 'search-results'
 
     def __init__(self, key, params, timeout=60):
         self._apiKey = key
@@ -64,13 +66,13 @@ class ScopusSearchQuery:
                                                  dta['service-error']['status']['statusText'],
                                                  "URL is:", url))  # Fix this
 
+        self._nextUrl = "done"  # Nasty? Sorry : )
         # KeyError hazard: If no 'next' url is available, we need to error out anyway
-        nxtLink = [ln for ln in dta['search-results']['link'] if ln['@ref'] == 'next']
-        if len(nxtLink) > 0:
-            self._nextUrl = nxtLink[0]['@href']
-        else:
-            self._nextUrl = "done"  # Nasty? Sorry : )
-        return dta['search-results']['entry']  # Returning only the obtained results
+        if self._support_pagination:
+            nxtLink = [ln for ln in dta[self._root_key]['link'] if ln['@ref'] == 'next']
+            if len(nxtLink) > 0:
+                self._nextUrl = nxtLink[0]['@href']
+        return dta[self._root_key]['entry']  # Returning only the obtained results
 
     def __iter__(self):
         return self
@@ -93,6 +95,8 @@ class ScopusSerialTitle(ScopusSearchQuery):
                       'view': 'CITESCORE',
                       'httpAccept': 'application/json'}
     _baseUrl = "http://api.elsevier.com/content/serial/title"
+    _support_pagination = False
+    _root_key = 'serial-metadata-response'
 
     def _make_search_url(self):
         params = self._params
@@ -100,8 +104,9 @@ class ScopusSerialTitle(ScopusSearchQuery):
         pSet = set(params.keys()).union(set(defParams.keys()))
         parameters = {key: params[key] if key in params else defParams[key] for key in pSet}
         if "issn" in parameters:
-            base_url = self._baseUrl + '/issn/' + parameters['issn']
-            parameters.pop('query')
+            base_url = self._baseUrl + '/issn/' + parameters['issn'] + '?'
+            if 'title' in parameters:
+                parameters.pop('title')
             parameters.pop('issn')
         else:
             base_url = self._baseUrl + '?'
