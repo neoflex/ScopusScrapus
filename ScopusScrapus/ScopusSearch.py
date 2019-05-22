@@ -131,7 +131,7 @@ class SerialTitleQuery:
     _defaultParams = {'count': 200,
                       'view': 'CITESCORE',
                       'httpAccept': 'application/json'}
-    _baseUrl = "http://api.elsevier.com/content/serial/title"
+    _baseUrl = "http://api.elsevier.com/content/serial/title?"
     _support_pagination = False
     _root_key = 'serial-metadata-response'
 
@@ -156,9 +156,10 @@ class SerialTitleQuery:
         parameters = {key: params[key] if key in params else _defaultParams[key] for key in pset}
 
         # make query
-        data = purl.urlencode(parameters)
-        query = '{}?{}'.format(_baseUrl, data)
-        return query
+        querystring = purl.urlencode(parameters)
+        apiKeyString = purl.urlencode({'apiKey': self._apiKey})
+        url = "{}{}{}{}".format(base_url, querystring, '&', apiKeyString)
+        return url
 
     def _manageQuotaExcess(self,
                            raiseOnQE=False):
